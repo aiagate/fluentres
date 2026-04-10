@@ -2,7 +2,7 @@
 
 import pytest
 
-from fluentres import AwaitableResult, Err, Ok, Result
+from flow_res import AwaitableResult, Err, Ok, Result
 from tests.testutils.error import ErrType, TestErr
 
 
@@ -20,7 +20,7 @@ async def async_add_ten(x: int) -> Result[int, TestErr]:
 async def test_result_awaitable_await_ok() -> None:
     """Test that ResultAwaitable can be awaited to get Result."""
 
-    async def get_result() -> Ok[int]:
+    async def get_result() -> Result[int, Exception]:
         return Ok(42)
 
     awaitable = AwaitableResult(get_result())
@@ -35,7 +35,7 @@ async def test_result_awaitable_await_err() -> None:
     """Test that ResultAwaitable can be awaited to get Err."""
     error = TestErr(type=ErrType.NOT_FOUND, message="Not found")
 
-    async def get_result() -> Err[TestErr]:
+    async def get_result() -> Result[int, TestErr]:
         return Err(error)
 
     awaitable = AwaitableResult(get_result())
@@ -49,7 +49,7 @@ async def test_result_awaitable_await_err() -> None:
 async def test_result_awaitable_map_ok() -> None:
     """Test that ResultAwaitable.map transforms Ok value."""
 
-    async def get_result() -> Ok[int]:
+    async def get_result() -> Result[int, TestErr]:
         return Ok(5)
 
     result = await AwaitableResult(get_result()).map(lambda x: x * 2)
@@ -63,7 +63,7 @@ async def test_result_awaitable_map_err() -> None:
     """Test that ResultAwaitable.map passes through Err."""
     error = TestErr(type=ErrType.VALIDATION_ERROR, message="Invalid")
 
-    async def get_result() -> Err[TestErr]:
+    async def get_result() -> Result[int, TestErr]:
         return Err(error)
 
     result = await AwaitableResult(get_result()).map(lambda x: x * 2)  # type: ignore[arg-type]
@@ -76,7 +76,7 @@ async def test_result_awaitable_map_err() -> None:
 async def test_result_awaitable_map_chain() -> None:
     """Test that multiple map calls can be chained."""
 
-    async def get_result() -> Ok[int]:
+    async def get_result() -> Result[int, TestErr]:
         return Ok(5)
 
     result = await (
@@ -94,7 +94,7 @@ async def test_result_awaitable_map_chain() -> None:
 async def test_result_awaitable_unwrap_ok() -> None:
     """Test that unwrap returns value for Ok."""
 
-    async def get_result() -> Ok[int]:
+    async def get_result() -> Result[int, TestErr]:
         return Ok(42)
 
     value = await AwaitableResult(get_result()).unwrap()
@@ -107,7 +107,7 @@ async def test_result_awaitable_unwrap_err() -> None:
     """Test that unwrap raises exception for Err."""
     error = TestErr(type=ErrType.NOT_FOUND, message="Not found")
 
-    async def get_result() -> Err[TestErr]:
+    async def get_result() -> Result[int, TestErr]:
         return Err(error)
 
     with pytest.raises(TestErr) as exc_info:
@@ -120,7 +120,7 @@ async def test_result_awaitable_unwrap_err() -> None:
 async def test_result_awaitable_full_chain() -> None:
     """Test complete chain: map -> map -> unwrap."""
 
-    async def get_result() -> Ok[int]:
+    async def get_result() -> Result[int, TestErr]:
         return Ok(10)
 
     value = await (
@@ -135,7 +135,7 @@ async def test_result_awaitable_full_chain_with_err() -> None:
     """Test complete chain with Err raises exception."""
     error = TestErr(type=ErrType.UNEXPECTED, message="Error")
 
-    async def get_result() -> Err[TestErr]:
+    async def get_result() -> Result[int, TestErr]:
         return Err(error)
 
     with pytest.raises(TestErr) as exc_info:
@@ -314,3 +314,22 @@ async def test_result_awaitable_map_err_with_map_and_then() -> None:
 
     assert isinstance(result, Err)
     assert str(result.error) == "Error: failure"
+
+
+def sync_double(x: int) -> Result[int, TestErr]:
+    """Helper sync function that returns Ok with doubled value."""
+    return Ok(x * 2)
+
+
+@pytest.mark.anyio
+async def test_result_awaitable_and_then_sync() -> None:
+    """Test that ResultAwaitable.and_then applies sync function for Ok."""
+
+    async def get_initial() -> Result[int, TestErr]:
+        return Ok(5)
+
+    result = AwaitableResult(get_initial())
+    final = await result.and_then(sync_double)
+
+    assert isinstance(final, Ok)
+    assert final.value == 10

@@ -1,4 +1,5 @@
-from fluentres import Err, Ok, Result, is_ok
+from flow_res import Result, Ok, Err, is_ok
+
 from tests.testutils.error import ErrType, TestErr
 
 

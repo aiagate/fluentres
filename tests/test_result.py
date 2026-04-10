@@ -1,14 +1,14 @@
 """Tests for Result type functional methods."""
 
 import pytest
+from flow_res import Err, Ok, Result
 
-from fluentres import Err, Ok, Result, is_ok
 from tests.testutils.error import ErrType, TestErr
 
 
 def test_ok_map_transforms_value() -> None:
     """Test that Ok.map transforms the value."""
-    result: Ok[int] = Ok(5)
+    result = Ok(5)
     mapped = result.map(lambda x: x * 2)
 
     assert isinstance(mapped, Ok)
@@ -17,7 +17,7 @@ def test_ok_map_transforms_value() -> None:
 
 def test_ok_map_changes_type() -> None:
     """Test that Ok.map can change the type of the value."""
-    result: Ok[int] = Ok(42)
+    result = Ok(42)
     mapped = result.map(lambda x: f"Number: {x}")
 
     assert isinstance(mapped, Ok)
@@ -37,7 +37,7 @@ def test_err_map_passes_through() -> None:
 
 def test_ok_unwrap_returns_value() -> None:
     """Test that Ok.unwrap returns the value."""
-    result: Ok[int] = Ok(42)
+    result = Ok(42)
     value = result.unwrap()
 
     assert value == 42
@@ -79,7 +79,7 @@ def test_err_expect_raises_exception() -> None:
 
 def test_map_chain() -> None:
     """Test that multiple map calls can be chained."""
-    result: Ok[int] = Ok(5)
+    result = Ok(5)
     final = (
         result.map(lambda x: x * 2).map(lambda x: x + 3).map(lambda x: f"Result: {x}")
     )
@@ -102,7 +102,7 @@ def test_map_chain_with_err() -> None:
 
 def test_map_unwrap_chain() -> None:
     """Test that map and unwrap can be chained together."""
-    result: Ok[int] = Ok(10)
+    result = Ok(10)
     value = result.map(lambda x: x * 5).map(lambda x: x + 10).unwrap()
 
     assert value == 60
@@ -136,24 +136,9 @@ def test_usecase_error_str() -> None:
     assert str(error) == "Resource not found"
 
 
-def test_is_ok_returns_true_for_ok() -> None:
-    """Test that is_ok returns True for Ok result."""
-
-    result = Ok(42)
-    assert is_ok(result) is True
-
-
-def test_is_ok_returns_false_for_err() -> None:
-    """Test that is_ok returns False for Err result."""
-
-    error = TestErr(type=ErrType.NOT_FOUND, message="Not found")
-    result: Result[int, TestErr] = Err(error)
-    assert is_ok(result) is False
-
-
 def test_ok_and_then_returns_new_result() -> None:
     """Test that Ok.and_then applies the function and returns the new Result."""
-    result: Ok[int] = Ok(5)
+    result = Ok(5)
     new_result = result.and_then(lambda x: Ok(x * 2))
 
     assert isinstance(new_result, Ok)
@@ -182,7 +167,7 @@ def test_err_and_then_passes_through() -> None:
 
 def test_and_then_chain() -> None:
     """Test that multiple and_then calls can be chained."""
-    result: Ok[int] = Ok(2)
+    result = Ok(2)
     final = (
         result.and_then(lambda x: Ok(x * 3))
         .and_then(lambda x: Ok(x + 10))
@@ -195,7 +180,7 @@ def test_and_then_chain() -> None:
 
 def test_and_then_chain_with_error() -> None:
     """Test that error in and_then chain stops further processing."""
-    result: Ok[int] = Ok(2)
+    result = Ok(2)
     error = TestErr(type=ErrType.UNEXPECTED, message="Error occurred")
     final = (
         result.and_then(lambda x: Ok(x * 3))
@@ -307,11 +292,10 @@ def test_map_err_with_map_chain() -> None:
 def test_map_err_error_wrapping() -> None:
     """Test map_err for wrapping exceptions (use case from spec)."""
 
-    def find_record(record_id: int) -> Err[KeyError]:
+    def find_record(record_id: int) -> Result[str, KeyError]:
         """Simulate a function that returns KeyError."""
         return Err(KeyError(f"ID {record_id}"))
 
-    # Transform KeyError to UseCaseError
     result = find_record(999).map_err(
         lambda e: TestErr(type=ErrType.NOT_FOUND, message=f"Record missing: {e}")
     )
