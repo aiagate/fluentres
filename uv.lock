@@ -120,8 +120,8 @@ wheels = [
 ]
 
 [[package]]
-name = "fluentres"
-version = "0.0.2"
+name = "flow-res"
+version = "0.1.0"
 source = { editable = "." }
 
 [package.dev-dependencies]

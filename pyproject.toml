@@ -1,6 +1,6 @@
 [project]
-name = "fluentres"
-version = "0.0.2"
+name = "flow-res"
+version = "0.1.0"
 authors = [
   { name="Shimae", email="50893541+aiagate@users.noreply.github.com" },
 ]
@@ -20,8 +20,8 @@ requires = ["uv_build >= 0.10.10, <0.11.0"]
 build-backend = "uv_build"
 
 [project.urls]
-Homepage = "https://github.com/aiagate/fluentres"
-Issues = "https://github.com/aiagate/fluentres/issues"
+Homepage = "https://github.com/aiagate/flow-res"
+Issues = "https://github.com/aiagate/flow-res/issues"
 
 [dependency-groups]
 dev = [
@@ -37,12 +37,13 @@ dev = [
 
 [tool.coverage.run]
 source = ["src"]
+omit = ["tests/*"]
 
 [tool.coverage.report]
 precision = 2
 show_missing = true
 skip_empty = true
-fail_under = 75
+fail_under = 95
 exclude_lines = [
     "pragma: no cover",
     "def __repr__",
