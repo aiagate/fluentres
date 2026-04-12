@@ -8,7 +8,7 @@ jobs:
     name: publish release to PyPI Test
     runs-on: ubuntu-latest
     environment:
-      name: release_test
+      name: publish-test
       url: https://test.pypi.org/p/apopy
     permissions:
       id-token: write
