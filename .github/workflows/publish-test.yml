@@ -3,9 +3,8 @@ name: publish-test
 on:
   push:
     tags:
-      - 'v*rc*'
-      - 'v*a*'
-      - 'v*b*'
+      - 'v*'
+      - '!v[0-9]+.[0-9]+.[0-9]+'
   workflow_dispatch:
 
 jobs:
