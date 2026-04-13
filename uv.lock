@@ -121,7 +121,6 @@ wheels = [
 
 [[package]]
 name = "flow-res"
-version = "0.1.0"
 source = { editable = "." }
 
 [package.dev-dependencies]

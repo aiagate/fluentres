@@ -17,6 +17,8 @@ jobs:
     steps:
       # https://github.com/actions/checkout
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
       - name: Set up Python
         # https://github.com/actions/setup-python
