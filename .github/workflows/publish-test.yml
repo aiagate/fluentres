@@ -1,6 +1,11 @@
 name: publish-test
 
 on:
+  push:
+    tags:
+      - 'v*rc*'
+      - 'v*a*'
+      - 'v*b*'
   workflow_dispatch:
 
 jobs:
@@ -9,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: publish-test
-      url: https://test.pypi.org/p/apopy
+      url: https://test.pypi.org/p/flow-res
     permissions:
       id-token: write
     env:
