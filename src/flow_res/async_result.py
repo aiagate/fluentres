@@ -1,7 +1,7 @@
 import inspect
 from collections.abc import Awaitable, Callable, Coroutine, Generator
 from functools import wraps
-from typing import Any
+from typing import Any, cast
 
 from .result import Err, Ok, Result
 
@@ -12,6 +12,10 @@ class AwaitableResult[T, E: Exception]:
 
     This allows elegant syntax like:
         message = await Mediator.send_async(query).map(...).unwrap()
+
+    An ``AwaitableResult`` owns one native coroutine and is therefore single-use.
+    Await it directly or consume it through one chain only. Awaiting it twice, or
+    branching multiple chains from the same instance, raises ``RuntimeError``.
     """
 
     def __init__(self, coro: Coroutine[Any, Any, Result[T, E]]) -> None:
@@ -32,7 +36,7 @@ class AwaitableResult[T, E: Exception]:
             coro_repr = repr(self._coro)
         except Exception:
             coro_repr = "<unreprable coroutine>"
-        return f"ResultAwaitable(coro={coro_repr})"
+        return f"AwaitableResult(coro={coro_repr})"
 
     def __await__(self) -> Generator[Any, None, Result[T, E]]:
         """Make this object awaitable, returning the underlying Result."""
@@ -51,7 +55,7 @@ class AwaitableResult[T, E: Exception]:
             f: Function to apply to the Ok value (T -> U)
 
         Returns:
-            ResultAwaitable[U, E] wrapping the transformed result
+            AwaitableResult[U, E] wrapping the transformed result
 
         Example:
             user_id = await Mediator.send_async(cmd).map(lambda v: v.user_id)
@@ -63,9 +67,9 @@ class AwaitableResult[T, E: Exception]:
 
         return AwaitableResult(mapped())
 
-    def and_then[U](
-        self, f: Callable[[T], Awaitable[Result[U, E]] | Result[U, E]]
-    ) -> "AwaitableResult[U, E]":
+    def and_then[U, F: Exception](
+        self, f: Callable[[T], Awaitable[Result[U, F]] | Result[U, F]]
+    ) -> "AwaitableResult[U, E | F]":
         """
         Apply a function (sync or async) that returns a Result, flattening the nested Result.
 
@@ -73,10 +77,10 @@ class AwaitableResult[T, E: Exception]:
 
         Args:
             f: Function that takes the Ok value and returns a new Result
-               (T -> Awaitable[Result[U, E]] | Result[U, E])
+               (T -> Awaitable[Result[U, F]] | Result[U, F])
 
         Returns:
-            ResultAwaitable[U, E] wrapping the result of applying the function
+            AwaitableResult[U, E | F] wrapping the result of applying the function
 
         Example:
             await (
@@ -87,16 +91,16 @@ class AwaitableResult[T, E: Exception]:
             )
         """
 
-        async def chained() -> Result[U, E]:
+        async def chained() -> Result[U, E | F]:
             _result: Result[T, E] = await self
             match _result:
                 case Ok(value):
                     res = f(value)
                     if inspect.isawaitable(res):
-                        return await res
-                    return res
+                        res = await res
+                    return cast(Result[U, E | F], res)
                 case Err():
-                    return _result
+                    return cast(Result[U, E | F], _result)
 
         return AwaitableResult(chained())
 
@@ -127,7 +131,7 @@ class AwaitableResult[T, E: Exception]:
             f: Function to apply to the error value (E -> F)
 
         Returns:
-            ResultAwaitable[T, F] wrapping the result with transformed error type
+            AwaitableResult[T, F] wrapping the result with transformed error type
 
         Example:
             await (
@@ -144,9 +148,9 @@ class AwaitableResult[T, E: Exception]:
         return AwaitableResult(mapped())
 
 
-def async_result[T, E: Exception](
-    func: Callable[..., Coroutine[Any, Any, Result[T, E]]],
-) -> Callable[..., AwaitableResult[T, E]]:
+def async_result[**P, T, E: Exception](
+    func: Callable[P, Coroutine[Any, Any, Result[T, E]]],
+) -> Callable[P, AwaitableResult[T, E]]:
     """
     Decorator that wraps an async function returning Result in AwaitableResult.
 
@@ -176,7 +180,7 @@ def async_result[T, E: Exception](
     """
 
     @wraps(func)
-    def wrapper(*args: Any, **kwargs: Any) -> AwaitableResult[T, E]:
+    def wrapper(*args: P.args, **kwargs: P.kwargs) -> AwaitableResult[T, E]:
         return AwaitableResult(
             coro=func(*args, **kwargs),
         )

@@ -1,4 +1,4 @@
-"""Tests for ResultAwaitable type."""
+"""Tests for AwaitableResult type."""
 
 import pytest
 
@@ -18,7 +18,7 @@ async def async_add_ten(x: int) -> Result[int, TestErr]:
 
 @pytest.mark.anyio
 async def test_result_awaitable_await_ok() -> None:
-    """Test that ResultAwaitable can be awaited to get Result."""
+    """Test that AwaitableResult can be awaited to get Result."""
 
     async def get_result() -> Result[int, Exception]:
         return Ok(42)
@@ -32,7 +32,7 @@ async def test_result_awaitable_await_ok() -> None:
 
 @pytest.mark.anyio
 async def test_result_awaitable_await_err() -> None:
-    """Test that ResultAwaitable can be awaited to get Err."""
+    """Test that AwaitableResult can be awaited to get Err."""
     error = TestErr(type=ErrType.NOT_FOUND, message="Not found")
 
     async def get_result() -> Result[int, TestErr]:
@@ -47,7 +47,7 @@ async def test_result_awaitable_await_err() -> None:
 
 @pytest.mark.anyio
 async def test_result_awaitable_map_ok() -> None:
-    """Test that ResultAwaitable.map transforms Ok value."""
+    """Test that AwaitableResult.map transforms Ok value."""
 
     async def get_result() -> Result[int, TestErr]:
         return Ok(5)
@@ -60,13 +60,13 @@ async def test_result_awaitable_map_ok() -> None:
 
 @pytest.mark.anyio
 async def test_result_awaitable_map_err() -> None:
-    """Test that ResultAwaitable.map passes through Err."""
+    """Test that AwaitableResult.map passes through Err."""
     error = TestErr(type=ErrType.VALIDATION_ERROR, message="Invalid")
 
     async def get_result() -> Result[int, TestErr]:
         return Err(error)
 
-    result = await AwaitableResult(get_result()).map(lambda x: x * 2)  # type: ignore[arg-type]
+    result = await AwaitableResult(get_result()).map(lambda x: x * 2)
 
     assert isinstance(result, Err)
     assert result.error is error
@@ -139,14 +139,14 @@ async def test_result_awaitable_full_chain_with_err() -> None:
         return Err(error)
 
     with pytest.raises(TestErr) as exc_info:
-        await AwaitableResult(get_result()).map(lambda x: x * 2).unwrap()  # type: ignore[arg-type, return-value]
+        await AwaitableResult(get_result()).map(lambda x: x * 2).unwrap()
 
     assert exc_info.value is error
 
 
 @pytest.mark.anyio
 async def test_result_awaitable_and_then_ok() -> None:
-    """Test that ResultAwaitable.and_then applies function for Ok."""
+    """Test that AwaitableResult.and_then applies function for Ok."""
 
     async def get_initial() -> Result[int, TestErr]:
         return Ok(5)
@@ -160,7 +160,7 @@ async def test_result_awaitable_and_then_ok() -> None:
 
 @pytest.mark.anyio
 async def test_result_awaitable_and_then_err() -> None:
-    """Test that ResultAwaitable.and_then passes through Err."""
+    """Test that AwaitableResult.and_then passes through Err."""
     error = TestErr(type=ErrType.NOT_FOUND, message="Not found")
 
     async def get_error() -> Result[int, TestErr]:
@@ -230,7 +230,7 @@ async def test_result_awaitable_and_then_error_propagation() -> None:
 
 @pytest.mark.anyio
 async def test_result_awaitable_map_err_ok() -> None:
-    """Test that ResultAwaitable.map_err passes through Ok unchanged."""
+    """Test that AwaitableResult.map_err passes through Ok unchanged."""
 
     async def get_result() -> Result[int, Exception]:
         return Ok(42)
@@ -245,7 +245,7 @@ async def test_result_awaitable_map_err_ok() -> None:
 
 @pytest.mark.anyio
 async def test_result_awaitable_map_err_err() -> None:
-    """Test that ResultAwaitable.map_err transforms Err value."""
+    """Test that AwaitableResult.map_err transforms Err value."""
 
     async def get_result() -> Result[int, Exception]:
         return Err(Exception("original error"))
@@ -323,7 +323,7 @@ def sync_double(x: int) -> Result[int, TestErr]:
 
 @pytest.mark.anyio
 async def test_result_awaitable_and_then_sync() -> None:
-    """Test that ResultAwaitable.and_then applies sync function for Ok."""
+    """Test that AwaitableResult.and_then applies sync function for Ok."""
 
     async def get_initial() -> Result[int, TestErr]:
         return Ok(5)

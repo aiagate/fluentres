@@ -1,5 +1,9 @@
-from flow_res import Err, Ok, safe
+from collections.abc import Coroutine
+from typing import Any, assert_type
+
 import pytest
+
+from flow_res import Err, Ok, Result, safe
 
 
 def test_safe_decorator_wraps_exception() -> None:
@@ -24,7 +28,7 @@ def test_safe_decorator_returns_ok() -> None:
     def safe_function(x: int) -> int:
         return x * 2
 
-    result = safe_function(5)
+    result = assert_type(safe_function(5), Result[int, Exception])
     assert isinstance(result, Ok)
     assert result.value == 10
 
@@ -44,6 +48,9 @@ def test_safe_decorator_with_specific_exception() -> None:
     result = risky_function(-5)
     assert isinstance(result, Err)
     assert isinstance(result.error, ValueError)
+
+    success = assert_type(risky_function(2), Result[int, Exception])
+    assert success == Ok(4)
 
     # Should NOT catch TypeError
     with pytest.raises(TypeError):
@@ -70,3 +77,57 @@ def test_safe_decorator_with_multiple_exceptions() -> None:
     # Should NOT catch RuntimeError
     with pytest.raises(RuntimeError):
         risky_function(1)
+
+
+@pytest.mark.asyncio
+async def test_safe_decorator_awaits_async_function_and_wraps_exception() -> None:
+    @safe(ValueError)
+    async def risky_function(value: int, *, fail: bool = False) -> int:
+        if fail:
+            raise ValueError("failed asynchronously")
+        return value * 2
+
+    pending = risky_function(value=5)
+    pending = assert_type(
+        pending,
+        Coroutine[Any, Any, Result[int, Exception]],
+    )
+    assert await pending == Ok(10)
+
+    result = await risky_function(5, fail=True)
+    assert isinstance(result, Err)
+    assert isinstance(result.error, ValueError)
+
+
+@pytest.mark.asyncio
+async def test_safe_without_arguments_supports_async_function() -> None:
+    @safe
+    async def risky_function(value: int) -> int:
+        if value < 0:
+            raise RuntimeError("failed asynchronously")
+        return value
+
+    assert await risky_function(1) == Ok(1)
+    assert isinstance(await risky_function(-1), Err)
+
+
+@pytest.mark.asyncio
+async def test_safe_empty_parentheses_supports_async_function() -> None:
+    @safe()
+    async def risky_function(value: int) -> int:
+        if value < 0:
+            raise ValueError("failed asynchronously")
+        return value
+
+    assert await risky_function(1) == Ok(1)
+    assert isinstance(await risky_function(-1), Err)
+
+
+@pytest.mark.asyncio
+async def test_safe_async_function_does_not_catch_unlisted_exception() -> None:
+    @safe(ValueError)
+    async def risky_function() -> int:
+        raise TypeError("not handled")
+
+    with pytest.raises(TypeError, match="not handled"):
+        await risky_function()

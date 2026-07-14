@@ -1,5 +1,16 @@
+from typing import assert_type
+
 from flow_res import Err, Ok, Result, combine_all
 from tests.testutils.error import ErrType, TestErr
+
+
+def test_combine_all_empty_tuple() -> None:
+    """An empty input succeeds with an accurately typed empty tuple."""
+
+    combined = combine_all(())
+
+    assert_type(combined, Result[tuple[()], ExceptionGroup])
+    assert combined == Ok(())
 
 
 def test_combine_all_all_ok() -> None:

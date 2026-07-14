@@ -4,41 +4,142 @@ on:
   push:
     tags:
       - 'v*'
-      - '!v[0-9]+.[0-9]+.[0-9]+'
   workflow_dispatch:
+    inputs:
+      tag:
+        description: Pre-release PEP 440 tag to publish (for example, v1.2.3rc1)
+        required: true
+        type: string
 
 jobs:
+  classify:
+    name: classify release tag
+    runs-on: ubuntu-latest
+    outputs:
+      is_prerelease: ${{ steps.version.outputs.is_prerelease }}
+    env:
+      RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+    steps:
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          version: "0.11.4"
+
+      - name: Classify PEP 440 version
+        id: version
+        run: |
+          uv run --no-project --with packaging==26.0 python - <<'PY'
+          import os
+          from pathlib import Path
+          from packaging.version import InvalidVersion, Version
+
+          tag = os.environ["RELEASE_TAG"]
+          if not tag.startswith("v"):
+              raise SystemExit(f"release tag must start with 'v': {tag!r}")
+          try:
+              version = Version(tag[1:])
+          except InvalidVersion as error:
+              raise SystemExit(f"release tag is not a valid PEP 440 version: {tag!r}") from error
+          output = Path(os.environ["GITHUB_OUTPUT"])
+          with output.open("a", encoding="utf-8") as stream:
+              print(f"is_prerelease={str(version.is_prerelease).lower()}", file=stream)
+          PY
+
+  quality:
+    name: validate, test, and build pre-release
+    needs: classify
+    if: needs.classify.outputs.is_prerelease == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+    steps:
+      - name: Checkout release tag
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.tag && format('refs/tags/{0}', inputs.tag) || github.ref }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version-file: "pyproject.toml"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          version: "0.11.4"
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Run ruff format check
+        run: uv run --frozen ruff format --check .
+
+      - name: Run ruff linting
+        run: uv run --frozen ruff check .
+
+      - name: Run type checking with pyright
+        run: uv run --frozen pyright
+
+      - name: Run tests
+        run: uv run --frozen pytest --cov --cov-report=term-missing
+
+      - name: Build distributions
+        run: uv build
+
+      - name: Verify built version and wheel installation
+        run: |
+          uv run --frozen python - <<'PY'
+          import email
+          import os
+          import zipfile
+          from pathlib import Path
+          from packaging.version import Version
+
+          wheels = list(Path("dist").glob("*.whl"))
+          if len(wheels) != 1:
+              raise SystemExit(f"expected exactly one wheel, found: {wheels}")
+          with zipfile.ZipFile(wheels[0]) as archive:
+              metadata_path = next(name for name in archive.namelist() if name.endswith(".dist-info/METADATA"))
+              metadata = email.message_from_bytes(archive.read(metadata_path))
+          tag_version = Version(os.environ["RELEASE_TAG"][1:])
+          built_version = Version(metadata["Version"])
+          if built_version != tag_version:
+              raise SystemExit(f"built version {built_version} does not match tag version {tag_version}")
+          PY
+          python -m venv .wheel-venv
+          .wheel-venv/bin/python -m pip install --no-deps dist/*.whl
+          .wheel-venv/bin/python -c "import flow_res"
+
+      - name: Store verified distributions
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-distributions
+          path: dist/
+          if-no-files-found: error
+
   pypi-test-publish:
-    name: publish release to PyPI Test
+    name: publish release to TestPyPI
+    needs: quality
     runs-on: ubuntu-latest
     environment:
       name: publish-test
       url: https://test.pypi.org/p/flow-res
     permissions:
+      actions: read
       id-token: write
-    env:
-      TRUSTED_PUBLISHING: always
     steps:
-      # https://github.com/actions/checkout
-      - uses: actions/checkout@v6
+      - name: Download verified distributions
+        uses: actions/download-artifact@v4
         with:
-          fetch-depth: 0
+          name: release-distributions
+          path: dist/
 
-      - name: Set up Python
-        # https://github.com/actions/setup-python
-        uses: actions/setup-python@v6
-        with:
-          python-version-file: "pyproject.toml"
-      - name: Install uv
-        #
-        uses: astral-sh/setup-uv@v7
-        with:
-          enable-cache: true
-          # Install a specific version of uv.
-          version: "0.11.4"
-      - run: uv build
       - name: Publish package distributions to TestPyPI
-        # https://docs.pypi.org/trusted-publishers/using-a-publisher/
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           repository-url: https://test.pypi.org/legacy/

@@ -160,6 +160,12 @@ def combine[E: Exception](
 
 
 @overload
+def combine_all(
+    results: tuple[()],
+) -> Result[tuple[()], ExceptionGroup]: ...
+
+
+@overload
 def combine_all[T1, E: Exception](
     results: tuple[Result[T1, E]],
 ) -> Result[tuple[T1], ExceptionGroup]: ...
