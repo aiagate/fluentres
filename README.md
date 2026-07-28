@@ -86,6 +86,7 @@ print(result)  # Err(error=ValueError("invalid literal for int() with base 10: '
 
 `@async_result` デコレータを使用することで、非同期関数の実行結果に対しても await 前にメソッドチェーンを適用できます。
 `AwaitableResult` は内部のコルーチンを一つだけ保持する単一消費型です。同じインスタンスを複数回 await したり、複数のチェーンへ分岐させたりせず、一つのチェーンで消費してください。
+また、生成した `AwaitableResult` を await せずに破棄すると、Python が未消費コルーチンの `RuntimeWarning` を報告する場合があります。呼び出した非同期処理は、必ず一つのチェーンの終端で await してください。
 
 ```python
 import asyncio
@@ -148,3 +149,4 @@ match combine_all(results):
 ## 協力・貢献
 
 不具合報告や機能拡張の提案は、[GitHub Issues](https://github.com/aiagate/flow-res/issues) にて承っております。
+開発環境の構築、品質チェック、互換性方針、リリース手順については [CONTRIBUTING.md](CONTRIBUTING.md) を参照してください。
