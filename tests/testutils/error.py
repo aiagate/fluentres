@@ -15,6 +15,8 @@ class ErrType(Enum):
 class TestErr(Exception):
     """Represents a specific error from a use case."""
 
+    __test__ = False
+
     type: ErrType
     message: str
 

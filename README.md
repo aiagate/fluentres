@@ -49,7 +49,7 @@ match result:
 `map` や `and_then` を用いることで、命令的な条件分岐を排除し、処理のパイプラインを構築できます。
 
 ```python
-from flow_res import Result
+from flow_res import Err, Ok, Result
 
 def validate_positive(x: int) -> Result[int, ValueError]:
     if x < 0:
@@ -85,10 +85,11 @@ print(result)  # Err(error=ValueError("invalid literal for int() with base 10: '
 ### 4. 非同期処理の統合 (@async_result)
 
 `@async_result` デコレータを使用することで、非同期関数の実行結果に対しても await 前にメソッドチェーンを適用できます。
+`AwaitableResult` は内部のコルーチンを一つだけ保持する単一消費型です。同じインスタンスを複数回 await したり、複数のチェーンへ分岐させたりせず、一つのチェーンで消費してください。
 
 ```python
 import asyncio
-from flow_res import Result, async_result
+from flow_res import Err, Ok, Result, async_result
 
 @async_result
 async def fetch_user(user_id: int) -> Result[dict, ValueError]:

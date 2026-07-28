@@ -32,6 +32,7 @@ Issues = "https://github.com/aiagate/flow-res/issues"
 [dependency-groups]
 dev = [
     "anyio>=4.11.0",
+    "packaging>=26.0",
     "pre-commit>=4.5.0",
     "pyright>=1.1.407",
     "pytest>=8.3.5",

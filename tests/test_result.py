@@ -185,7 +185,7 @@ def test_and_then_chain_with_error() -> None:
     final = (
         result.and_then(lambda x: Ok(x * 3))
         .and_then(lambda x: Err(error))
-        .and_then(lambda x: Ok(x + 10))  # type: ignore[arg-type]
+        .and_then(lambda x: Ok(x + 10))
     )
 
     assert isinstance(final, Err)

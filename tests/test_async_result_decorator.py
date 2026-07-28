@@ -1,10 +1,11 @@
 """Tests for the @async_result decorator."""
 
 import asyncio
+from typing import assert_type
 
 import pytest
 
-from flow_res import Err, Ok, Result, async_result
+from flow_res import AwaitableResult, Err, Ok, Result, async_result
 
 
 @async_result
@@ -30,6 +31,7 @@ async def test_async_result_decorator_returns_awaitable_result():
     # The decorated function returns AwaitableResult, which has .map() method
     assert hasattr(result, "map")
     assert hasattr(result, "and_then")
+    assert (await result).unwrap() == 10
 
 
 @pytest.mark.asyncio
@@ -131,3 +133,58 @@ async def test_async_result_decorator_with_match_expression():
             assert value == 10
         case _:
             pytest.fail("Expected Ok result")
+
+
+@pytest.mark.asyncio
+async def test_async_result_preserves_signature_and_combines_error_types() -> None:
+    @async_result
+    async def stringify(value: int, *, prefix: str) -> Result[str, RuntimeError]:
+        return Ok(f"{prefix}{value}")
+
+    initial = successful_operation(value=5)
+    assert_type(initial, AwaitableResult[int, ValueError])
+
+    chained = initial.and_then(lambda value: stringify(value, prefix="value="))
+    assert_type(chained, AwaitableResult[str, ValueError | RuntimeError])
+    assert await chained == Ok("value=10")
+
+
+@pytest.mark.asyncio
+async def test_async_result_and_then_returns_new_error_type() -> None:
+    error = RuntimeError("next operation failed")
+    failure = Err(error)
+
+    async def fail(_value: int) -> Result[str, RuntimeError]:
+        return failure
+
+    result = await successful_operation(5).and_then(fail)
+
+    assert isinstance(result, Err)
+    assert result is failure
+    assert result.error is error
+
+
+@pytest.mark.asyncio
+async def test_async_result_and_then_preserves_original_error_in_union() -> None:
+    original_error = ValueError("initial operation failed")
+    initial_failure = Err(original_error)
+
+    @async_result
+    async def initially_fails(value: int) -> Result[int, ValueError]:
+        return initial_failure
+
+    called = False
+
+    async def next_operation(_value: int) -> Result[str, RuntimeError]:
+        nonlocal called
+        called = True
+        return Ok("unexpected")
+
+    chained = initially_fails(value=5).and_then(next_operation)
+    assert_type(chained, AwaitableResult[str, ValueError | RuntimeError])
+
+    result = await chained
+    assert isinstance(result, Err)
+    assert result is initial_failure
+    assert result.error is original_error
+    assert not called
