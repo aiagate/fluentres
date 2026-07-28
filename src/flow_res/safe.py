@@ -6,22 +6,28 @@ from typing import Any, Protocol, overload
 from .result import Err, Ok, Result
 
 
-class _SafeDecorator(Protocol):
+class _SafeDecorator[E: Exception](Protocol):
     """Type-preserving decorator returned by ``safe(...)``."""
 
     @overload
     def __call__[**P, T](  # pyright: ignore[reportOverlappingOverload]
         self, func: Callable[P, Coroutine[Any, Any, T]], /
-    ) -> Callable[P, Coroutine[Any, Any, Result[T, Exception]]]: ...
+    ) -> Callable[P, Coroutine[Any, Any, Result[T, E]]]: ...
 
     @overload
     def __call__[**P, T](
         self, func: Callable[P, T], /
-    ) -> Callable[P, Result[T, Exception]]: ...
+    ) -> Callable[P, Result[T, E]]: ...
 
 
 @overload
-def safe(*exceptions: type[Exception]) -> _SafeDecorator: ...
+def safe() -> _SafeDecorator[Exception]: ...
+
+
+@overload
+def safe[E: Exception](
+    exception: type[E], /, *exceptions: type[E]
+) -> _SafeDecorator[E]: ...
 
 
 @overload
