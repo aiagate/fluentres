@@ -50,7 +50,7 @@ def test_safe_decorator_with_specific_exception() -> None:
     assert isinstance(result, Err)
     assert isinstance(result.error, ValueError)
 
-    success = assert_type(risky_function(2), Result[int, Exception])
+    success = assert_type(risky_function(2), Result[int, ValueError])
     assert success == Ok(4)
 
     # Should NOT catch TypeError
@@ -70,6 +70,8 @@ def test_safe_decorator_with_multiple_exceptions() -> None:
         if x == 1:
             raise RuntimeError("One is a runtime error")
         return x * 2
+
+    assert_type(risky_function(2), Result[int, ValueError | TypeError])
 
     # Should catch ValueError
     assert isinstance(risky_function(-5), Err)
@@ -91,7 +93,7 @@ async def test_safe_decorator_awaits_async_function_and_wraps_exception() -> Non
     pending = risky_function(value=5)
     pending = assert_type(
         pending,
-        Coroutine[Any, Any, Result[int, Exception]],
+        Coroutine[Any, Any, Result[int, ValueError]],
     )
     assert await pending == Ok(10)
 
