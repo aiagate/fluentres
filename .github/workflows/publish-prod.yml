@@ -12,8 +12,35 @@ on:
         type: string
 
 jobs:
+  classify:
+    name: classify release tag
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      classification: ${{ steps.version.outputs.classification }}
+    env:
+      RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+    steps:
+      - name: Checkout classification helper
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.tag && github.event.repository.default_branch || github.ref }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+          version: "0.11.4"
+
+      - name: Classify PEP 440 release tag
+        id: version
+        run: uv run --no-project --with packaging==26.0 python scripts/release_tag.py "$RELEASE_TAG"
+
   quality:
     name: validate, test, and build release
+    needs: classify
+    if: needs.classify.outputs.classification == 'stable'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -39,23 +66,6 @@ jobs:
 
       - name: Install dependencies
         run: uv sync --frozen
-
-      - name: Validate stable release tag
-        run: |
-          uv run --frozen python - <<'PY'
-          import os
-          from packaging.version import InvalidVersion, Version
-
-          tag = os.environ["RELEASE_TAG"]
-          if not tag.startswith("v"):
-              raise SystemExit(f"release tag must start with 'v': {tag!r}")
-          try:
-              version = Version(tag[1:])
-          except InvalidVersion as error:
-              raise SystemExit(f"release tag is not a valid PEP 440 version: {tag!r}") from error
-          if version.is_prerelease:
-              raise SystemExit(f"pre-release tags cannot be published to production PyPI: {tag!r}")
-          PY
 
       - name: Run ruff format check
         run: uv run --frozen ruff format --check .

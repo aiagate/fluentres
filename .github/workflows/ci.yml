@@ -42,3 +42,12 @@ jobs:
 
       - name: Run tests
         run: uv run --frozen pytest --cov --cov-report=term-missing
+
+      - name: Build distributions
+        run: uv build
+
+      - name: Verify wheel installation
+        run: |
+          python -m venv .wheel-venv
+          .wheel-venv/bin/python -m pip install --no-deps dist/*.whl
+          .wheel-venv/bin/python -c "import flow_res"

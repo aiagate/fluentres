@@ -31,6 +31,36 @@ async def test_result_awaitable_await_ok() -> None:
 
 
 @pytest.mark.anyio
+async def test_result_awaitable_cannot_be_awaited_twice() -> None:
+    """Test that an AwaitableResult instance is single-use."""
+
+    async def get_result() -> Result[int, Exception]:
+        return Ok(42)
+
+    awaitable = AwaitableResult(get_result())
+
+    assert await awaitable == Ok(42)
+    with pytest.raises(RuntimeError):
+        await awaitable
+
+
+@pytest.mark.anyio
+async def test_result_awaitable_branches_cannot_both_be_consumed() -> None:
+    """Test that chains branching from one AwaitableResult share its single use."""
+
+    async def get_result() -> Result[int, Exception]:
+        return Ok(21)
+
+    awaitable = AwaitableResult(get_result())
+    doubled = awaitable.map(lambda value: value * 2)
+    incremented = awaitable.map(lambda value: value + 1)
+
+    assert await doubled == Ok(42)
+    with pytest.raises(RuntimeError):
+        await incremented
+
+
+@pytest.mark.anyio
 async def test_result_awaitable_await_err() -> None:
     """Test that AwaitableResult can be awaited to get Err."""
     error = TestErr(type=ErrType.NOT_FOUND, message="Not found")

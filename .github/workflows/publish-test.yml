@@ -15,11 +15,18 @@ jobs:
   classify:
     name: classify release tag
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     outputs:
-      is_prerelease: ${{ steps.version.outputs.is_prerelease }}
+      classification: ${{ steps.version.outputs.classification }}
     env:
       RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
     steps:
+      - name: Checkout classification helper
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.tag && github.event.repository.default_branch || github.ref }}
+
       - name: Install uv
         uses: astral-sh/setup-uv@v7
         with:
@@ -28,28 +35,12 @@ jobs:
 
       - name: Classify PEP 440 version
         id: version
-        run: |
-          uv run --no-project --with packaging==26.0 python - <<'PY'
-          import os
-          from pathlib import Path
-          from packaging.version import InvalidVersion, Version
-
-          tag = os.environ["RELEASE_TAG"]
-          if not tag.startswith("v"):
-              raise SystemExit(f"release tag must start with 'v': {tag!r}")
-          try:
-              version = Version(tag[1:])
-          except InvalidVersion as error:
-              raise SystemExit(f"release tag is not a valid PEP 440 version: {tag!r}") from error
-          output = Path(os.environ["GITHUB_OUTPUT"])
-          with output.open("a", encoding="utf-8") as stream:
-              print(f"is_prerelease={str(version.is_prerelease).lower()}", file=stream)
-          PY
+        run: uv run --no-project --with packaging==26.0 python scripts/release_tag.py "$RELEASE_TAG"
 
   quality:
     name: validate, test, and build pre-release
     needs: classify
-    if: needs.classify.outputs.is_prerelease == 'true'
+    if: needs.classify.outputs.classification == 'prerelease'
     runs-on: ubuntu-latest
     permissions:
       contents: read

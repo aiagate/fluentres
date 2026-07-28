@@ -1,3 +1,4 @@
+import asyncio
 from collections.abc import Coroutine
 from typing import Any, assert_type
 
@@ -97,6 +98,20 @@ async def test_safe_decorator_awaits_async_function_and_wraps_exception() -> Non
     result = await risky_function(5, fail=True)
     assert isinstance(result, Err)
     assert isinstance(result.error, ValueError)
+
+
+@pytest.mark.asyncio
+async def test_safe_wraps_exception_raised_after_async_function_suspends() -> None:
+    @safe(ValueError)
+    async def risky_function() -> int:
+        await asyncio.sleep(0)
+        raise ValueError("failed after suspension")
+
+    result = await risky_function()
+
+    assert isinstance(result, Err)
+    assert isinstance(result.error, ValueError)
+    assert str(result.error) == "failed after suspension"
 
 
 @pytest.mark.asyncio
