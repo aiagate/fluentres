@@ -22,6 +22,20 @@ def test_safe_decorator_wraps_exception() -> None:
     assert "Negative number" in str(result.error)
 
 
+def test_bare_safe_catches_any_exception_subclass() -> None:
+    """Bare @safe intentionally preserves its Exception catch-all behavior."""
+
+    @safe
+    def unexpected_failure() -> None:
+        raise RuntimeError("unexpected programming failure")
+
+    result = unexpected_failure()
+
+    assert isinstance(result, Err)
+    assert isinstance(result.error, RuntimeError)
+    assert str(result.error) == "unexpected programming failure"
+
+
 def test_safe_decorator_returns_ok() -> None:
     """Test that @safe decorator returns Ok for successful execution."""
 
@@ -56,6 +70,17 @@ def test_safe_decorator_with_specific_exception() -> None:
     # Should NOT catch TypeError
     with pytest.raises(TypeError):
         risky_function(0)
+
+
+def test_explicit_safe_filter_propagates_unlisted_exception() -> None:
+    """An explicit filter must not convert exceptions outside its allowlist."""
+
+    @safe(ValueError)
+    def risky_function() -> None:
+        raise RuntimeError("not in the filter")
+
+    with pytest.raises(RuntimeError, match="not in the filter"):
+        risky_function()
 
 
 def test_safe_decorator_with_multiple_exceptions() -> None:
@@ -126,6 +151,18 @@ async def test_safe_without_arguments_supports_async_function() -> None:
 
     assert await risky_function(1) == Ok(1)
     assert isinstance(await risky_function(-1), Err)
+
+
+@pytest.mark.asyncio
+async def test_bare_safe_does_not_catch_cancelled_error() -> None:
+    """Control-flow exceptions such as CancelledError must propagate."""
+
+    @safe
+    async def cancellable_operation() -> None:
+        raise asyncio.CancelledError
+
+    with pytest.raises(asyncio.CancelledError):
+        await cancellable_operation()
 
 
 @pytest.mark.asyncio

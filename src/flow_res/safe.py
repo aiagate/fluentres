@@ -44,10 +44,16 @@ def safe(*args: Any) -> Any:
     """Convert exceptions raised by a function into ``Result`` values.
 
     The decorator preserves the decorated function's parameter signature. It may be
-    used as ``@safe`` to catch every ``Exception``, or with exception classes such as
-    ``@safe(ValueError, TypeError)``. Async functions and callable objects with an
-    async ``__call__`` remain async; their body is awaited inside the exception
-    handler before an ``Ok`` or ``Err`` is returned.
+    used as ``@safe`` to intentionally catch every ``Exception`` for backwards
+    compatibility, or with exception classes such as ``@safe(ValueError, TypeError)``
+    to limit the conversion to known failures. The catch-all form can turn unexpected
+    programming errors into ``Err`` values, so production code should generally use
+    an explicit exception filter. Exceptions not listed by an explicit filter are
+    propagated unchanged. Control-flow exceptions such as ``asyncio.CancelledError``
+    are not ``Exception`` subclasses and are therefore never caught by the default.
+    Async functions and callable objects with an async ``__call__`` remain async; their
+    body is awaited inside the exception handler before an ``Ok`` or ``Err`` is
+    returned.
     """
     if (
         len(args) == 1
