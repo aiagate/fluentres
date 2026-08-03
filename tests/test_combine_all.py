@@ -1,7 +1,11 @@
-from typing import assert_type
+from typing import Any, assert_type
 
 from flow_res import Err, Ok, Result, combine_all
 from tests.testutils.error import ErrType, TestErr
+
+
+def _typed_ok[T](value: T) -> Result[T, ValueError]:
+    return Ok(value)
 
 
 def test_combine_all_empty_tuple() -> None:
@@ -74,3 +78,49 @@ def test_combine_all_heterogeneous_with_errors() -> None:
     assert isinstance(combined, Err)
     assert isinstance(combined.error, ExceptionGroup)
     assert len(combined.error.exceptions) == 2
+
+
+def test_combine_all_eleven_element_heterogeneous_tuple_uses_fallback_type() -> None:
+    """Long heterogeneous tuples are accepted with the documented fallback type."""
+    results = (
+        _typed_ok(1),
+        _typed_ok("two"),
+        _typed_ok(3.0),
+        _typed_ok(True),
+        _typed_ok(b"five"),
+        _typed_ok(6),
+        _typed_ok("seven"),
+        _typed_ok(8.0),
+        _typed_ok(False),
+        _typed_ok(b"ten"),
+        _typed_ok(11),
+    )
+
+    combined = combine_all(results)
+
+    assert_type(combined, Result[tuple[Any, ...], ExceptionGroup])
+    assert combined == Ok(
+        (1, "two", 3.0, True, b"five", 6, "seven", 8.0, False, b"ten", 11)
+    )
+
+
+def test_combine_all_eleven_element_homogeneous_tuple_uses_fallback_type() -> None:
+    """Long homogeneous tuples are accepted with the documented fallback type."""
+    results = (
+        _typed_ok(1),
+        _typed_ok(2),
+        _typed_ok(3),
+        _typed_ok(4),
+        _typed_ok(5),
+        _typed_ok(6),
+        _typed_ok(7),
+        _typed_ok(8),
+        _typed_ok(9),
+        _typed_ok(10),
+        _typed_ok(11),
+    )
+
+    combined = combine_all(results)
+
+    assert_type(combined, Result[tuple[Any, ...], ExceptionGroup])
+    assert combined == Ok(tuple(range(1, 12)))

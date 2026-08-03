@@ -120,6 +120,12 @@ def combine[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, E: Exception](
 ) -> Result[tuple[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10], E]: ...
 
 
+@overload
+def combine[E: Exception](
+    results: Sequence[Result[Any, E]],
+) -> Result[tuple[Any, ...], E]: ...
+
+
 def combine[E: Exception](
     results: Sequence[Result[Any, E]],
 ) -> Result[tuple[Any, ...], E]:
@@ -141,6 +147,9 @@ def combine[E: Exception](
 
     Returns:
         A single Result object. Ok(tuple of success values) or the first Err.
+
+        Tuples with one to ten elements retain positional type precision.  Longer
+        tuples and general sequences use a fallback type of ``tuple[Any, ...]``.
 
     Examples:
         Heterogeneous types (use tuple):
@@ -353,6 +362,12 @@ def combine_all[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, E: Exception](
 ) -> Result[tuple[T1, T2, T3, T4, T5, T6, T7, T8, T9, T10], ExceptionGroup]: ...
 
 
+@overload
+def combine_all[E: Exception](
+    results: Sequence[Result[Any, E]],
+) -> Result[tuple[Any, ...], ExceptionGroup]: ...
+
+
 def combine_all[E: Exception](
     results: Sequence[Result[Any, E]],
 ) -> Result[tuple[Any, ...], ExceptionGroup]:
@@ -371,6 +386,9 @@ def combine_all[E: Exception](
     Returns:
         Ok(tuple of success values) if all succeed,
         or Err(ExceptionGroup("Multiple errors occurred", list of errors)) if any fail.
+
+        Tuples with one to ten elements retain positional type precision.  Longer
+        tuples and general sequences use a fallback type of ``tuple[Any, ...]``.
 
     Example:
         >>> from app.core.result import combine_all, Ok, Err
