@@ -103,7 +103,7 @@ jobs:
               raise SystemExit(f"built version {built_version} does not match tag version {tag_version}")
           PY
           python -m venv .wheel-venv
-          .wheel-venv/bin/python -m pip install --no-deps dist/*.whl
+          .wheel-venv/bin/python -m pip install dist/*.whl
           .wheel-venv/bin/python -c "import flow_res"
 
       - name: Store verified distributions
