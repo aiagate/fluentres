@@ -98,6 +98,7 @@ print(result)  # Err(error=ValueError("invalid literal for int() with base 10: '
 
 `@async_result` デコレータを使用することで、非同期関数の実行結果に対しても await 前にメソッドチェーンを適用できます。
 `AwaitableResult` は内部のコルーチンを一つだけ保持する単一消費型です。同じインスタンスを複数回 await したり、複数のチェーンへ分岐させたりせず、一つのチェーンで消費してください。
+2回目のawait、または分岐したチェーンのうち後から消費するチェーンでは、`RuntimeError("AwaitableResult can only be consumed once")` が送出されます。
 また、生成した `AwaitableResult` を await せずに破棄すると、Python が未消費コルーチンの `RuntimeWarning` を報告する場合があります。呼び出した非同期処理は、必ず一つのチェーンの終端で await してください。
 
 ```python

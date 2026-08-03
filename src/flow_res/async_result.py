@@ -26,6 +26,7 @@ class AwaitableResult[T, E: Exception]:
             coro: Coroutine that will return Result[T, E]
         """
         self._coro = coro
+        self._consumed = False
 
     def __repr__(self) -> str:
         """Return a helpful representation for debugging.
@@ -40,6 +41,9 @@ class AwaitableResult[T, E: Exception]:
 
     def __await__(self) -> Generator[Any, None, Result[T, E]]:
         """Make this object awaitable, returning the underlying Result."""
+        if self._consumed:
+            raise RuntimeError("AwaitableResult can only be consumed once")
+        self._consumed = True
         return self._coro.__await__()
 
     def map[U](self, f: Callable[[T], U]) -> "AwaitableResult[U, E]":

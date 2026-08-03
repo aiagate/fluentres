@@ -40,7 +40,9 @@ async def test_result_awaitable_cannot_be_awaited_twice() -> None:
     awaitable = AwaitableResult(get_result())
 
     assert await awaitable == Ok(42)
-    with pytest.raises(RuntimeError):
+    with pytest.raises(
+        RuntimeError, match="^AwaitableResult can only be consumed once$"
+    ):
         await awaitable
 
 
@@ -56,7 +58,9 @@ async def test_result_awaitable_branches_cannot_both_be_consumed() -> None:
     incremented = awaitable.map(lambda value: value + 1)
 
     assert await doubled == Ok(42)
-    with pytest.raises(RuntimeError):
+    with pytest.raises(
+        RuntimeError, match="^AwaitableResult can only be consumed once$"
+    ):
         await incremented
 
 
