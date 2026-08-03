@@ -70,6 +70,18 @@ print(result.unwrap())  # 13
 
 既存の例外を発生させる可能性のある関数を、低コストで Result 駆動型へ移行させます。
 
+引数なしの `@safe`（および `@safe()`）は、互換性のため、意図的にすべての
+`Exception` を `Err` へ変換する catch-all です。そのため、予期しないプログラミング
+エラーまで `Err` になり得ます。既存の bare `@safe` の動作は変更していません。
+実運用では、捕捉したい対象を `@safe(ValueError, TypeError)` のように明示してください。
+明示した型に一致しない例外はそのまま伝播します。
+
+`asyncio.CancelledError` などの制御フロー用例外は `Exception` のサブクラスではないため、
+bare `@safe` でも捕捉されず、キャンセルなどの制御フローを隠しません。
+
+既存の catch-all を維持したい場合は移行不要です。捕捉範囲を狭める場合は、対象の例外を
+監査したうえで `@safe` を `@safe(ValueError, ...)` に置き換えてください。
+
 ```python
 from flow_res import safe
 
