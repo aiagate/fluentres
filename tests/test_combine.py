@@ -1,4 +1,9 @@
-from flow_res import Err, Ok, Result
+from collections.abc import Callable
+from typing import Any
+
+import pytest
+
+from flow_res import Err, Ok, Result, combine_async, combine_lazy
 
 from tests.testutils.error import ErrType, TestErr
 
@@ -185,3 +190,89 @@ def test_combine_complex_heterogeneous_types() -> None:
     assert mail == "test@example.com"
     assert user_age == 25
     assert active is True
+
+
+def test_combine_lazy_runs_factories_in_order_and_stops_after_err() -> None:
+    """Only factories through the first Err are evaluated."""
+    calls: list[str] = []
+    first_error = TestErr(type=ErrType.VALIDATION_ERROR, message="Failed")
+
+    def factory(
+        name: str, result: Result[Any, TestErr]
+    ) -> Callable[[], Result[Any, TestErr]]:
+        def run() -> Result[Any, TestErr]:
+            calls.append(name)
+            return result
+
+        return run
+
+    combined = combine_lazy(
+        (
+            factory("first", Ok(1)),
+            factory("second", Err(first_error)),
+            factory("third", Ok(3)),
+        )
+    )
+
+    assert combined == Err(first_error)
+    assert calls == ["first", "second"]
+
+
+def test_combine_lazy_returns_success_values_in_evaluation_order() -> None:
+    """Successful factory values are collected in factory order."""
+    calls: list[str] = []
+
+    def factory(name: str, value: Any) -> Callable[[], Result[Any, TestErr]]:
+        def run() -> Result[Any, TestErr]:
+            calls.append(name)
+            return Ok(value)
+
+        return run
+
+    combined = combine_lazy(
+        (factory("first", 1), factory("second", "two"), factory("third", True))
+    )
+
+    assert combined == Ok((1, "two", True))
+    assert calls == ["first", "second", "third"]
+
+
+@pytest.mark.anyio
+async def test_combine_async_runs_sync_and_async_factories_in_order() -> None:
+    """Sync and async factories are evaluated sequentially."""
+    calls: list[str] = []
+
+    def sync_factory() -> Result[int, TestErr]:
+        calls.append("sync")
+        return Ok(1)
+
+    async def async_factory() -> Result[int, TestErr]:
+        calls.append("async")
+        return Ok(2)
+
+    combined = await combine_async((sync_factory, async_factory))
+
+    assert combined == Ok((1, 2))
+    assert calls == ["sync", "async"]
+
+
+@pytest.mark.anyio
+async def test_combine_async_stops_after_first_err_without_calling_later_factories() -> (
+    None
+):
+    """An async Err is awaited before later factories are skipped."""
+    calls: list[str] = []
+    first_error = TestErr(type=ErrType.UNEXPECTED, message="Failed")
+
+    async def error_factory() -> Result[int, TestErr]:
+        calls.append("error")
+        return Err(first_error)
+
+    def later_factory() -> Result[int, TestErr]:
+        calls.append("later")
+        return Ok(3)
+
+    combined = await combine_async((error_factory, later_factory))
+
+    assert combined == Err(first_error)
+    assert calls == ["error"]

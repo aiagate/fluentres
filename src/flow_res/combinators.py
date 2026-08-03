@@ -1,5 +1,6 @@
-from collections.abc import Sequence
-from typing import Any, overload
+import inspect
+from collections.abc import Awaitable, Callable, Iterable, Sequence
+from typing import Any, cast, overload
 
 from .result import Result, Ok, Err
 
@@ -123,13 +124,20 @@ def combine[E: Exception](
     results: Sequence[Result[Any, E]],
 ) -> Result[tuple[Any, ...], E]:
     """
-    Aggregates a sequence of Result objects.
+    Aggregate an already-computed sequence of ``Result`` objects.
 
     If all results are Ok, returns an Ok containing a tuple of all success values.
     If any result is an Err, returns the first Err encountered.
 
+    ``results`` contains values that have already been computed.  In particular,
+    Python evaluates every expression in a tuple or list before calling this
+    function, so returning at the first ``Err`` cannot prevent later input
+    expressions from running.  Once called, this function does stop its own
+    scan at the first ``Err``.  Use :func:`combine_lazy` when the computations
+    themselves must be deferred and short-circuited.
+
     Args:
-        results: A sequence of Result objects.
+        results: A sequence of already-computed Result objects.
 
     Returns:
         A single Result object. Ok(tuple of success values) or the first Err.
@@ -156,6 +164,75 @@ def combine[E: Exception](
         if isinstance(r, Err):
             return r  # Return the first error found
         values.append(r.unwrap())
+    return Ok(tuple(values))
+
+
+def combine_lazy[E: Exception](
+    factories: Iterable[Callable[[], Result[Any, E]]],
+) -> Result[tuple[Any, ...], E]:
+    """
+    Run Result factories in order and stop at the first ``Err``.
+
+    Unlike :func:`combine`, this function receives zero-argument factories
+    rather than already-computed ``Result`` values.  Each factory is called
+    only when it is reached.  If it returns ``Err``, no later factory is
+    called, and that ``Err`` is returned.  Factories are consumed lazily from
+    the supplied iterable.
+
+    Args:
+        factories: An iterable of zero-argument callables returning ``Result``.
+
+    Returns:
+        ``Ok`` containing a tuple of all success values, or the first ``Err``.
+
+    Example:
+        >>> factories = (lambda: Ok(1), lambda: Ok(2), lambda: Err(ValueError("error")))
+        >>> combine_lazy(factories)
+        Err(ValueError("error"))
+    """
+    values: list[Any] = []
+    for factory in factories:
+        result = factory()
+        if isinstance(result, Err):
+            return result
+        values.append(result.unwrap())
+    return Ok(tuple(values))
+
+
+async def combine_async[E: Exception](
+    factories: Iterable[Callable[[], Result[Any, E] | Awaitable[Result[Any, E]]]],
+) -> Result[tuple[Any, ...], E]:
+    """
+    Sequentially run sync or async Result factories and stop at the first ``Err``.
+
+    Each zero-argument factory is called only after all preceding factories
+    returned ``Ok``.  If a factory returns an awaitable, it is awaited before
+    the next factory is considered.  The function does not create tasks or
+    depend on a particular async runtime; the caller awaits this coroutine in
+    its own runtime.  A synchronous ``Result`` may also be returned directly.
+
+    Args:
+        factories: An iterable of zero-argument callables returning either a
+            ``Result`` or an awaitable resolving to a ``Result``.
+
+    Returns:
+        An awaitable resolving to ``Ok`` containing a tuple of all success
+        values, or the first ``Err``.
+
+    Example:
+        >>> async def second():
+        ...     return Ok(2)
+        >>> await combine_async((lambda: Ok(1), second))
+        Ok((1, 2))
+    """
+    values: list[Any] = []
+    for factory in factories:
+        result = factory()
+        if inspect.isawaitable(result):
+            result = cast(Result[Any, E], await result)
+        if isinstance(result, Err):
+            return result
+        values.append(result.unwrap())
     return Ok(tuple(values))
 
 
