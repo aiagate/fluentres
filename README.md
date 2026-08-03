@@ -10,7 +10,7 @@ Rust 言語の `Result` 型に範を仰いだ、Python 向けの高機能かつ�
 * **鉄道指向プログラミング（ROP）**: `map` や `and_then` によるメソッドチェーンにより、宣言的なエラーハンドリングを実現します。
 * **非同期処理のネイティブサポート**: `@async_result` デコレータを通じて、非同期処理を `AwaitableResult` として透過的にチェーン可能です。
 * **メタプログラミングによる統合**: `@safe` デコレータを用いることで、既存の例外送出型関数を容易に Result 型へ変換できます。
-* **高度な結果集約**: `combine`（早期失敗）および `combine_all`（全エラー集約）により、複数の処理結果を合理的に統合します。
+* **高度な結果集約**: `combine`、`combine_lazy`、`combine_async`、`combine_all` により、複数の処理結果を合理的に統合します。
 * **軽量設計（ゼロ依存）**: 外部ライブラリへの依存はなく、プロジェクトへの導入障壁が極めて低く抑えられています。
 
 ## インストール
@@ -124,15 +124,17 @@ async def main():
 asyncio.run(main())
 ```
 
-### 5. 複数結果の集約ロジック (combine / combine_all)
+### 5. 複数結果の集約ロジック (combine / combine_lazy / combine_async / combine_all)
 
 バリデーションなど、複数の検証結果を一括で扱うためのインターフェースを提供します。
 
-* `combine`: 最初に遭遇した `Err` を返却する（短絡評価・早期失敗）
+* `combine`: 既に計算済みの `Result` のシーケンスを集約し、走査中に最初に遭遇した `Err` を返却する。tuple/list の入力式は `combine` 呼び出し前に評価済みなので、`Err` 以降の入力評価は止められない
+* `combine_lazy`: `Result` を返す遅延 factory を順番に呼び、最初の `Err` で後続 factory を呼ばずに停止する
+* `combine_async`: `Result` または `Awaitable[Result]` を返す遅延 factory を順番に呼び、必要なものだけ await して最初の `Err` で停止する（タスクを並列実行しない）
 * `combine_all`: すべての `Err` を集約して複数の例外を保持する `Err` を返却する（全件チェック）
 
 ```python
-from flow_res import Result, combine, combine_all, Ok, Err
+from flow_res import Result, combine, combine_all, combine_async, combine_lazy, Ok, Err
 
 results = (
     Ok(1),
@@ -143,11 +145,31 @@ results = (
 # 最初のエラー (error1) のみを返す
 print(combine(results)) 
 
+# 計算そのものを遅延させると、Err の後の factory は呼ばれない
+print(combine_lazy((lambda: Ok(1), lambda: Err(ValueError("error1")), lambda: Ok(3))))
+
 # すべてのエラーを集約して返す
 match combine_all(results):
     case Err(error):
         for e in error.exceptions:
             print(f"Error: {e}")
+```
+
+`combine_async` は、同期 factory と非同期 factory を同じ iterable に混在させられます。各 factory は直列に実行され、非同期の戻り値だけが await されます。
+
+```python
+import asyncio
+
+from flow_res import Ok, combine_async
+
+async def fetch_value() -> Ok[int]:
+    return Ok(2)
+
+async def main() -> None:
+    result = await combine_async((lambda: Ok(1), fetch_value))
+    print(result)  # Ok((1, 2))
+
+asyncio.run(main())
 ```
 
 ## 動作環境
