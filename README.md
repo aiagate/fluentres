@@ -133,6 +133,8 @@ asyncio.run(main())
 * `combine_async`: `Result` または `Awaitable[Result]` を返す遅延 factory を順番に呼び、必要なものだけ await して最初の `Err` で停止する（タスクを並列実行しない）
 * `combine_all`: すべての `Err` を集約して複数の例外を保持する `Err` を返却する（全件チェック）
 
+`combine` と `combine_all` は、1〜10 要素の異種 tuple では各要素の型を保持します。11 要素以上の tuple と一般の `Sequence` も受け付けますが、その場合の成功値は `tuple[Any, ...]` にフォールバックします。
+
 ```python
 from flow_res import Result, combine, combine_all, combine_async, combine_lazy, Ok, Err
 

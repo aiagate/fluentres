@@ -1,11 +1,15 @@
 from collections.abc import Callable
-from typing import Any
+from typing import Any, assert_type
 
 import pytest
 
-from flow_res import Err, Ok, Result, combine_async, combine_lazy
+from flow_res import Err, Ok, Result, combine, combine_async, combine_lazy
 
 from tests.testutils.error import ErrType, TestErr
+
+
+def _typed_ok[T](value: T) -> Result[T, ValueError]:
+    return Ok(value)
 
 
 def test_combine_all_ok() -> None:
@@ -190,6 +194,52 @@ def test_combine_complex_heterogeneous_types() -> None:
     assert mail == "test@example.com"
     assert user_age == 25
     assert active is True
+
+
+def test_combine_eleven_element_heterogeneous_tuple_uses_fallback_type() -> None:
+    """Long heterogeneous tuples are accepted with the documented fallback type."""
+    results = (
+        _typed_ok(1),
+        _typed_ok("two"),
+        _typed_ok(3.0),
+        _typed_ok(True),
+        _typed_ok(b"five"),
+        _typed_ok(6),
+        _typed_ok("seven"),
+        _typed_ok(8.0),
+        _typed_ok(False),
+        _typed_ok(b"ten"),
+        _typed_ok(11),
+    )
+
+    combined = combine(results)
+
+    assert_type(combined, Result[tuple[Any, ...], ValueError])
+    assert combined == Ok(
+        (1, "two", 3.0, True, b"five", 6, "seven", 8.0, False, b"ten", 11)
+    )
+
+
+def test_combine_eleven_element_homogeneous_tuple_uses_fallback_type() -> None:
+    """Long homogeneous tuples are accepted with the documented fallback type."""
+    results = (
+        _typed_ok(1),
+        _typed_ok(2),
+        _typed_ok(3),
+        _typed_ok(4),
+        _typed_ok(5),
+        _typed_ok(6),
+        _typed_ok(7),
+        _typed_ok(8),
+        _typed_ok(9),
+        _typed_ok(10),
+        _typed_ok(11),
+    )
+
+    combined = combine(results)
+
+    assert_type(combined, Result[tuple[Any, ...], ValueError])
+    assert combined == Ok(tuple(range(1, 12)))
 
 
 def test_combine_lazy_runs_factories_in_order_and_stops_after_err() -> None:
