@@ -4,7 +4,7 @@
 
 ## 開発環境
 
-Python 3.13 以上と [uv](https://docs.astral.sh/uv/) が必要です。リポジトリを clone したディレクトリで、ロックファイルに従って開発用依存関係をインストールします。
+Python 3.12 以上と [uv](https://docs.astral.sh/uv/) が必要です（Python 3.11 以下は対象外です）。リポジトリを clone したディレクトリで、ロックファイルに従って開発用依存関係をインストールします。
 
 ```bash
 uv sync --frozen
@@ -30,7 +30,7 @@ pytest はカバレッジ 95% を最低基準としています。README 内の 
 
 ```bash
 python -m venv .wheel-venv
-.wheel-venv/bin/python -m pip install --no-deps dist/*.whl
+.wheel-venv/bin/python -m pip install dist/*.whl
 .wheel-venv/bin/python -c "import flow_res"
 ```
 

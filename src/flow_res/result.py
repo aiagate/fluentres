@@ -2,7 +2,13 @@
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Never
+import sys
+from typing import Any, Generic, Never, TypeAliasType
+
+if sys.version_info >= (3, 13):
+    from typing import TypeVar
+else:
+    from typing_extensions import TypeVar
 
 
 @dataclass(frozen=True)
@@ -97,8 +103,11 @@ class Ok[T]:
         return self.value
 
 
+E = TypeVar("E", bound=Exception, default=Exception)
+
+
 @dataclass(frozen=True)
-class Err[E: Exception = Exception]:
+class Err(Generic[E]):
     """Represents a failure result."""
 
     error: E
@@ -187,5 +196,8 @@ class Err[E: Exception = Exception]:
         return default
 
 
-# The main Result type alias
-type Result[T, E: Exception = Exception] = Ok[T] | Err[E]
+# The main Result type alias. TypeVar defaults preserve the one-argument form
+# on Python 3.12, where default type parameters are not available in PEP 695
+# declarations yet.
+T_Result = TypeVar("T_Result")
+Result = TypeAliasType("Result", Ok[T_Result] | Err[E], type_params=(T_Result, E))
