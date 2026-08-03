@@ -148,3 +148,22 @@ async def test_safe_async_function_does_not_catch_unlisted_exception() -> None:
 
     with pytest.raises(TypeError, match="not handled"):
         await risky_function()
+
+
+@pytest.mark.asyncio
+async def test_safe_wraps_async_callable_object() -> None:
+    class AsyncCallable:
+        async def __call__(self, value: int, *, fail: bool = False) -> int:
+            await asyncio.sleep(0)
+            if fail:
+                raise ValueError("failed from callable object")
+            return value * 2
+
+    safe_callable = safe(ValueError)(AsyncCallable())
+
+    assert await safe_callable(5) == Ok(10)
+
+    result = await safe_callable(5, fail=True)
+    assert isinstance(result, Err)
+    assert isinstance(result.error, ValueError)
+    assert str(result.error) == "failed from callable object"
