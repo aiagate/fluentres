@@ -45,8 +45,9 @@ def safe(*args: Any) -> Any:
 
     The decorator preserves the decorated function's parameter signature. It may be
     used as ``@safe`` to catch every ``Exception``, or with exception classes such as
-    ``@safe(ValueError, TypeError)``. Async functions remain async; their body is
-    awaited inside the exception handler before an ``Ok`` or ``Err`` is returned.
+    ``@safe(ValueError, TypeError)``. Async functions and callable objects with an
+    async ``__call__`` remain async; their body is awaited inside the exception
+    handler before an ``Ok`` or ``Err`` is returned.
     """
     if (
         len(args) == 1
@@ -66,7 +67,9 @@ def safe(*args: Any) -> Any:
 def _wrap(
     func: Callable[..., Any], exceptions: tuple[type[Exception], ...]
 ) -> Callable[..., Any]:
-    if inspect.iscoroutinefunction(func):
+    if inspect.iscoroutinefunction(func) or inspect.iscoroutinefunction(
+        getattr(func, "__call__", None)
+    ):
 
         @wraps(func)
         async def async_wrapper(*args: Any, **kwargs: Any) -> Result[Any, Exception]:
