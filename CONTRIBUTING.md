@@ -1,6 +1,6 @@
 # flow-res への貢献
 
-不具合報告や機能提案は [GitHub Issues](https://github.com/aiagate/flow-res/issues) へお寄せください。コードやドキュメントを変更する場合は、以下の手順でローカル検証を行ってからプルリクエストを作成してください。
+不具合報告や機能提案は [GitHub Issues](https://github.com/shimae-net/flow-res/issues) へお寄せください。コードやドキュメントを変更する場合は、以下の手順でローカル検証を行ってからプルリクエストを作成してください。
 
 ## 開発環境
 
@@ -20,6 +20,7 @@ CI と同じ主要チェックは次のコマンドで実行できます。
 uv run --frozen ruff format --check .
 uv run --frozen ruff check .
 uv run --frozen pyright
+uv run --frozen mypy
 uv run --frozen pytest --cov --cov-report=term-missing
 uv build
 ```

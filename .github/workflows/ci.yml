@@ -44,6 +44,9 @@ jobs:
       - name: Run type checking with pyright
         run: uv run --frozen pyright
 
+      - name: Run type checking with mypy
+        run: uv run --frozen mypy
+
       - name: Run tests
         run: uv run --frozen pytest --cov --cov-report=term-missing
 

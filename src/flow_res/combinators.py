@@ -1,6 +1,6 @@
 import inspect
 from collections.abc import Awaitable, Callable, Iterable, Sequence
-from typing import Any, cast, overload
+from typing import Any, overload
 
 from .result import Result, Ok, Err
 
@@ -238,7 +238,7 @@ async def combine_async[E: Exception](
     for factory in factories:
         result = factory()
         if inspect.isawaitable(result):
-            result = cast(Result[Any, E], await result)
+            result = await result
         if isinstance(result, Err):
             return result
         values.append(result.unwrap())
