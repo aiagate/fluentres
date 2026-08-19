@@ -7,6 +7,7 @@ authors = [
 description = "Typed Result-based error handling for Python"
 readme = "README.md"
 requires-python = ">=3.12"
+keywords = ["error-handling", "result", "railway-oriented-programming", "typing"]
 dependencies = [
     "typing-extensions>=4.10; python_version < '3.13'",
 ]
@@ -32,13 +33,15 @@ source = "vcs"
 packages = ["src/flow_res"]
 
 [project.urls]
-Homepage = "https://github.com/aiagate/flow-res"
-Issues = "https://github.com/aiagate/flow-res/issues"
+Homepage = "https://github.com/shimae-net/flow-res"
+Issues = "https://github.com/shimae-net/flow-res/issues"
+Changelog = "https://github.com/shimae-net/flow-res/blob/main/CHANGELOG.md"
 
 [dependency-groups]
 dev = [
     "anyio>=4.11.0",
     "packaging>=26.0",
+    "mypy>=1.15,<2.4",
     "pre-commit>=4.5.0",
     "pyright>=1.1.407",
     "pytest>=8.3.5",
@@ -47,6 +50,11 @@ dev = [
     "pytest-mock>=3.14.0",
     "ruff>=0.14.6",
 ]
+
+[tool.mypy]
+python_version = "3.12"
+files = ["src"]
+strict = true
 
 [tool.coverage.run]
 source = ["src"]

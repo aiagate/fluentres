@@ -10,7 +10,7 @@ class _SafeDecorator[E: Exception](Protocol):
     """Type-preserving decorator returned by ``safe(...)``."""
 
     @overload
-    def __call__[**P, T](  # pyright: ignore[reportOverlappingOverload]
+    def __call__[**P, T](  # type: ignore[overload-overlap] # pyright: ignore[reportOverlappingOverload]
         self, func: Callable[P, Coroutine[Any, Any, T]], /
     ) -> Callable[P, Coroutine[Any, Any, Result[T, E]]]: ...
 
@@ -25,13 +25,19 @@ def safe() -> _SafeDecorator[Exception]: ...
 
 
 @overload
-def safe[E: Exception](
+def safe[E1: Exception, E2: Exception](
+    first_exception: type[E1], second_exception: type[E2], /
+) -> _SafeDecorator[E1 | E2]: ...
+
+
+@overload
+def safe[E: Exception](  # type: ignore[overload-overlap] # pyright: ignore[reportOverlappingOverload]
     exception: type[E], /, *exceptions: type[E]
 ) -> _SafeDecorator[E]: ...
 
 
 @overload
-def safe[**P, T](  # pyright: ignore[reportOverlappingOverload]
+def safe[**P, T](  # type: ignore[overload-overlap] # pyright: ignore[reportOverlappingOverload]
     __func: Callable[P, Coroutine[Any, Any, T]], /
 ) -> Callable[P, Coroutine[Any, Any, Result[T, Exception]]]: ...
 
